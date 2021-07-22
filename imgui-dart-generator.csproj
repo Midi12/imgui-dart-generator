@@ -55,13 +55,20 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
-    <None Include="definitions\cimgui\definitions.json" />
-    <None Include="definitions\cimgui\structs_and_enums.json" />
-    <None Include="definitions\cimgui\variants.json" />
+    <None Include="definitions\cimgui\definitions.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="definitions\cimgui\structs_and_enums.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Include="definitions\cimgui\variants.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
     <None Include="dependencies\cimgui64.dylib" />
     <None Include="dependencies\cimgui64.so" />
   </ItemGroup>
   <ItemGroup>
+    <Content Include=".gitignore" />
     <Content Include="dependencies\cimgui32.dll" />
     <Content Include="dependencies\cimgui64.dll" />
     <Content Include="dependencies\Newtonsoft.Json.dll" />

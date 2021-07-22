@@ -11,6 +11,7 @@ namespace imgui_dart_generator
     class Program
     {
         private static string fileExt = ".g.dart";
+
         static void Main(string[] args)
         {
             string libraryName = "cimgui";
@@ -35,17 +36,99 @@ namespace imgui_dart_generator
             Console.WriteLine("Generating types ...");
             GenerateTypes(defs, outputPath);
 
+            Console.WriteLine("Generating hand written types ...");
+            GenerateImVector(outputPath);
+            GenerateVector2(outputPath);
+            GenerateVector3(outputPath);
+            GenerateVector4(outputPath);
+            GenerateImGuiStoragePair(outputPath);
+
             Console.WriteLine("Generating functions ...");
             GenerateFunctions(defs, outputPath);
 
             Console.WriteLine($"Generated files to {outputPath}.");
         }
 
+        private static void GenerateImGuiStoragePair(string outputPath)
+        {
+            using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"ImGuiStoragePair{fileExt}")))
+            {
+                writer.WriteLine("import 'dart:ffi';");
+                writer.WriteLine();
+
+                writer.PushBlock("class ImGuiStoragePair extends Struct").WriteLine();
+                writer.WriteLine("@Uint32()").WriteLine("external int key;").WriteLine();
+                writer.WriteLine("/// `value` can be casted to `int`, `float` or `intptr`");
+                writer.WriteLine("@IntPtr()").WriteLine("external int value;").WriteLine();
+                writer.PopBlock();
+            }
+        }
+
+        private static void GenerateVector4(string outputPath)
+        {
+            using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"Vector4{fileExt}")))
+            {
+                writer.WriteLine("import 'dart:ffi';");
+                writer.WriteLine();
+
+                writer.PushBlock("class Vector4 extends Struct").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double x;").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double y;").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double z;").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double w;").WriteLine();
+                writer.PopBlock();
+            }
+        }
+
+        private static void GenerateVector3(string outputPath)
+        {
+            using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"Vector3{fileExt}")))
+            {
+                writer.WriteLine("import 'dart:ffi';");
+                writer.WriteLine();
+
+                writer.PushBlock("class Vector3 extends Struct").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double x;").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double y;").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double z;").WriteLine();
+                writer.PopBlock();
+            }
+        }
+
+        private static void GenerateVector2(string outputPath)
+        {
+            using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"Vector2{fileExt}")))
+            {
+                writer.WriteLine("import 'dart:ffi';");
+                writer.WriteLine();
+
+                writer.PushBlock("class Vector2 extends Struct").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double x;").WriteLine();
+                writer.WriteLine("@Float()").WriteLine("external double y;").WriteLine();
+                writer.PopBlock();
+            }
+        }
+
+        private static void GenerateImVector(string outputPath)
+        {
+            using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"ImVector{fileExt}")))
+            {
+                writer.WriteLine("import 'dart:ffi';");
+                writer.WriteLine();
+
+                writer.PushBlock("class ImVector extends Struct").WriteLine();
+                writer.WriteLine("@Uint32()").WriteLine("external int size;").WriteLine();
+                writer.WriteLine("@Uint32()").WriteLine("external int capacity;").WriteLine();
+                writer.WriteLine("external Pointer data;").WriteLine();
+                writer.PopBlock();
+            }
+        }
+
         private static void GenerateFunctions(ImguiDefinitions defs, string outputPath)
         {
             using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"ImGui{fileExt}")))
             {
-                writer.WriteLine("import 'dart:ffi';");
+                GenerateIncludes(writer, defs);
 
                 writer.WriteLine();
                 
@@ -92,8 +175,8 @@ namespace imgui_dart_generator
 
                             string identifier = CorrectIdentifier(p.Name);
                             paramParts.Add(identifier);
-                            nativeParamParts.Add($"{MapFFIType(paramType)} {identifier}");
-                            dartParamParts.Add($"{MapIntegralType(paramType)} {identifier}");
+                            nativeParamParts.Add($"{(IsEnum(defs, paramType) ? "Uint32" : MapFFIType(paramType))} {identifier}");
+                            dartParamParts.Add($"{(IsEnum(defs, paramType) ? "int" : MapIntegralType(paramType))} {identifier}");
                         }
 
                         if (hasVaList) { continue; }
@@ -119,15 +202,15 @@ namespace imgui_dart_generator
                         }
                         writer.WriteLine("/// );");
                         writer.WriteLine("///```");
-                        writer.WriteLine($"{MapIntegralType(ret)} {methodName}({dartParameters}) =>");
+                        writer.WriteLine($"{(IsEnum(defs, ret) ? "int" : MapIntegralType(ret))} {methodName}({dartParameters}) =>");
                         writer.AddIndentation().WriteLine($"_{methodName}({parameters});").RemoveIndentation();
 
                         writer.WriteLine();
 
                         writer.WriteLine($"late final _{methodName} = _cimgui.lookupFunction<");
                         writer.AddIndentation()
-                            .WriteLine($"{MapFFIType(ret)} Function({nativeParameters}),")
-                            .WriteLine($"{MapIntegralType(ret)} Function({dartParameters})>('{methodName}');")
+                            .WriteLine($"{(IsEnum(defs, ret) ? "Uint32" : MapFFIType(ret))} Function({nativeParameters}),")
+                            .WriteLine($"{(IsEnum(defs, ret) ? "int" : MapIntegralType(ret))} Function({dartParameters})>('{methodName}');")
                             .RemoveIndentation();
 
                         writer.WriteLine();
@@ -159,7 +242,7 @@ namespace imgui_dart_generator
                 using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"{td.Name}{fileExt}")))
                 {
                     // imports
-                    writer.WriteLine("import 'dart:ffi';");
+                    GenerateIncludes(writer, td);
 
                     writer.WriteLine();
 
@@ -189,12 +272,22 @@ namespace imgui_dart_generator
                         }
                         else
                         {
-                            if (TypeInfo.LegalFixedTypes.Contains(typeStr))
+                            if (TypeInfo.LegalFixedTypes.Contains(typeStr) || typeStr == "IntPtr")
                             {
                                 writer.WriteLine($"@{MapFFIType(typeStr)}()");
                             }
                             
-                            writer.WriteLine($"external {MapIntegralType(typeStr)} {Uncapitalize(field.Name)};");
+                            if (IsEnum(defs, typeStr))
+                            {
+                                writer.WriteLine($"/// Enum {typeStr}");
+                                writer.WriteLine($"@Uint32()");
+                                writer.WriteLine($"external int {Uncapitalize(field.Name)};");
+                            }
+                            else
+                            {
+                                writer.WriteLine($"external {MapIntegralType(typeStr)} {Uncapitalize(field.Name)};");
+                            }
+                            
                         }
 
                         writer.WriteLine();
@@ -205,13 +298,87 @@ namespace imgui_dart_generator
             }
         }
 
+        private static void GenerateIncludes(DartCodeWriter writer, ImguiDefinitions defs)
+        {
+            List<string> imports = new List<string>();
+
+            foreach (FunctionDefinition fd in defs.Functions)
+            {
+                foreach (OverloadDefinition overload in fd.Overloads)
+                {
+                    string ret = GetTypeString(overload.ReturnType, false).Replace("*", "");
+                    
+                    if (!TypeInfo.LegalFixedTypes.Contains(ret) && ret != "IntPtr" && ret != "Pointer" && !ret.Contains("void"))
+                    {
+                        imports.Add($"{ret}{fileExt}");
+                    }
+
+                    bool hasVaList = false;
+                    for (int i = 0; i < overload.Parameters.Length; i++)
+                    {
+                        TypeReference p = overload.Parameters[i];
+
+                        string typeStr = GetTypeString(p.Type, p.IsFunctionPointer).Replace("*", "");
+
+                        if (typeStr == "va_list")
+                        {
+                            hasVaList = true;
+                            break;
+                        }
+
+                        if (p.Name == "...") { continue; }
+
+                        if (!TypeInfo.LegalFixedTypes.Contains(typeStr) && typeStr != "IntPtr" && typeStr != "Pointer" && !typeStr.Contains("void"))
+                        {
+                            imports.Add($"{typeStr}{fileExt}");
+                        }
+                    }
+
+                    if (hasVaList) { continue; }
+                }
+            }
+
+            writer.WriteLine("import 'dart:ffi';");
+
+            foreach (string import in imports.Where(x => !x.ToLowerInvariant().Contains("callback")).Distinct())
+            {
+                writer.WriteLine($"import '{import}';");
+            }
+        }
+
+        private static void GenerateIncludes(DartCodeWriter writer, TypeDefinition td)
+        {
+            writer.WriteLine("import 'dart:ffi';");
+            writer.WriteLine();
+
+            List<string> imports = new List<string>();
+            foreach (TypeReference field in td.Fields)
+            {
+                string typeStr = GetTypeString(field.Type, field.IsFunctionPointer).Replace("*", "");
+                if (!TypeInfo.LegalFixedTypes.Contains(typeStr) && typeStr != "IntPtr" && typeStr != "Pointer" && !typeStr.Contains("void"))
+                {
+                    imports.Add($"{typeStr}{fileExt}");
+                }
+            }
+
+            foreach (string import in imports.Distinct())
+            {
+                writer.WriteLine($"import '{import}';");
+            }
+        }
+
+        private static bool IsEnum(ImguiDefinitions defs, string typeStr)
+        {
+            return defs.Enums.Select(x => x.FriendlyName).Contains(typeStr);
+        }
+
         private static void GenerateEnums(ImguiDefinitions defs, string outputPath)
         {
             foreach (EnumDefinition ed in defs.Enums)
             {
-                using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"E{ed.FriendlyName}{fileExt}")))
+                using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"{ed.FriendlyName}{fileExt}")))
                 {
-                    writer.PushBlock($"class E{ed.FriendlyName}");
+                    writer.PushBlock($"class {ed.FriendlyName}");
                     foreach (EnumMember member in ed.Members)
                     {
                         string sanitizedName = ed.SanitizeNames(member.Name);
@@ -238,7 +405,7 @@ namespace imgui_dart_generator
                 else if (!TypeInfo.WellKnownTypes.TryGetValue(typeName, out typeStr))
                 {
                     typeStr = typeName;
-                    if (isFunctionPointer) { typeStr = "IntPtr"; }
+                    if (isFunctionPointer) { typeStr = "Pointer"; }
                 }
             }
 
@@ -306,6 +473,10 @@ namespace imgui_dart_generator
                 int levels = type.Count(c => (c == '*'));
                 mappedType = String.Join("", Enumerable.Repeat("Pointer<", levels)) + MapFFIType(type.Replace("*", "")) + String.Join("", Enumerable.Repeat(">", levels));
             }
+            else if (type.ToLowerInvariant().Contains("callback"))
+            {
+                mappedType = "Pointer";
+            }
             else
             {
                 switch (type)
@@ -319,6 +490,7 @@ namespace imgui_dart_generator
                     case "int":
                     case "ulong":
                     case "long":
+                    case "IntPtr":
                         mappedType = "int";
                         break;
                     case "float":
@@ -343,6 +515,10 @@ namespace imgui_dart_generator
             {
                 int levels = type.Count(c => (c == '*'));
                 mappedType = String.Join("", Enumerable.Repeat("Pointer<", levels)) + MapFFIType(type.Replace("*", "")) + String.Join("", Enumerable.Repeat(">", levels));
+            }
+            else if (type.ToLowerInvariant().Contains("callback"))
+            {
+                mappedType = "Pointer";
             }
             else
             {
@@ -380,6 +556,9 @@ namespace imgui_dart_generator
                         break;
                     case "double":
                         mappedType = "Double";
+                        break;
+                    case "void":
+                        mappedType = "Void";
                         break;
                     default:
                         break;

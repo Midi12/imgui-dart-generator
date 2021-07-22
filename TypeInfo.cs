@@ -26,12 +26,8 @@ namespace imgui_dart_generator
             { "ImS64", "long" },
             { "unsigned short", "ushort" },
             { "unsigned int", "uint" },
-            { "ImVec2", "Vector2" },
-            { "ImVec2_Simple", "Vector2" },
-            { "ImVec3", "Vector3" },
-            { "ImVec4", "Vector4" },
             { "ImWchar16", "ushort" }, //char is not blittable
-            { "ImVec4_Simple", "Vector4" },
+            { "ImVec4_Simple", "ImVec4" },
             { "ImColor_Simple", "ImColor" },
             { "ImTextureID", "IntPtr" },
             { "ImGuiID", "uint" },
@@ -71,8 +67,6 @@ namespace imgui_dart_generator
         public static readonly HashSet<string> CustomDefinedTypes = new HashSet<string>()
         {
             "ImVector",
-            "ImVec2",
-            "ImVec4",
             "ImGuiStoragePair",
         };
 
@@ -119,9 +113,9 @@ namespace imgui_dart_generator
 
         public static readonly Dictionary<string, string> IdentifierReplacements = new Dictionary<string, string>()
         {
-            { "in", "@in" },
-            { "out", "@out" },
-            { "ref", "@ref" },
+            { "in", "_in" },
+            { "out", "_out" },
+            { "ref", "_ref" },
         };
 
         public static readonly HashSet<string> LegalFixedTypes = new HashSet<string>()
