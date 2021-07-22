@@ -66,6 +66,7 @@
     </None>
     <None Include="dependencies\cimgui64.dylib" />
     <None Include="dependencies\cimgui64.so" />
+    <None Include="ReadMe.md" />
   </ItemGroup>
   <ItemGroup>
     <Content Include=".gitignore" />
