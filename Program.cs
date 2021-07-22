@@ -128,12 +128,29 @@ namespace imgui_dart_generator
         {
             using (DartCodeWriter writer = new DartCodeWriter(Path.Combine(outputPath, $"ImGui{fileExt}")))
             {
+                writer.WriteLine("import 'dart:io' show Platform;");
                 GenerateIncludes(writer, defs);
 
                 writer.WriteLine();
                 
                 // declare dll
-                writer.WriteLine("final _cimgui = DynamicLibrary.open('cimgui.dll');");
+                writer.WriteLine(@"DynamicLibrary initializeImGui() {
+  var dll = '';
+
+  if (Platform.isWindows) {
+    dll = 'cimgui64.dll';
+  } else if (Platform.isMacOS) {
+    dll = 'cimgui64.dylib';
+  } else if (Platform.isLinux) {
+    dll = 'cimgui64.so';
+  } else {
+    throw Exception('Unsupported platform');
+  }
+
+  return DynamicLibrary.open(dll);
+}
+
+final _cimgui = initializeImGui();");
                 writer.WriteLine();
 
 
